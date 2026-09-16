@@ -1,0 +1,121 @@
+.features-container {
+  padding: 80px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #121212;
+}
+
+.features-header {
+  text-align: center;
+  margin-bottom: 60px;
+  max-width: 800px;
+}
+
+.features-title {
+  font-size: 48px;
+  letter-spacing: -1px;
+  margin-bottom: 20px;
+}
+
+.features-subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+  max-width: 1200px;
+  width: 100%;
+  margin-bottom: 60px;
+}
+
+.feature-card {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  min-height: 280px;
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(243, 186, 47, 0.1);
+}
+
+.feature-icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(243, 186, 47, 0.1);
+  color: var(--gold);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.feature-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.feature-card-title {
+  font-size: 20px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.feature-card-description {
+  color: var(--text-secondary);
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.features-action {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.features-btn {
+  font-size: 18px;
+  padding: 16px 40px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background-color: var(--gold);
+  color: #000;
+}
+
+.features-btn:hover {
+  background-color: var(--gold-hover);
+  color: #000;
+}
+
+.arrow-icon {
+  font-size: 20px;
+  transition: transform 0.2s ease;
+}
+
+.features-btn:hover .arrow-icon {
+  transform: translateX(4px);
+}
+
+@media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .features-title {
+    font-size: 36px;
+  }
+}

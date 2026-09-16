@@ -1,0 +1,148 @@
+.hero-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - 80px); /* header offset */
+  padding: 60px 20px;
+  text-align: center;
+  background: radial-gradient(circle at 50% 20%, rgba(243, 186, 47, 0.05) 0%, transparent 60%);
+}
+
+.hero-content {
+  max-width: 900px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.hero-title {
+  font-size: 56px;
+  line-height: 1.1;
+  margin-bottom: 24px;
+  letter-spacing: -1px;
+}
+
+.hero-subtitle {
+  font-size: 18px;
+  color: var(--text-secondary);
+  max-width: 700px;
+  margin-bottom: 60px;
+  line-height: 1.6;
+}
+
+.verify-card {
+  width: 100%;
+  max-width: 760px;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  overflow: hidden;
+  /* Gold glow effect for the card borders based on screenshot */
+  border: 1px solid rgba(243, 186, 47, 0.3);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+}
+
+.verify-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  opacity: 0.5;
+}
+
+.card-logo-wrapper {
+  margin-bottom: 40px;
+}
+
+.card-logo {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(243, 186, 47, 0.05);
+  border: 1px solid rgba(243, 186, 47, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 30px rgba(243, 186, 47, 0.1);
+  animation: pulseGlow 4s infinite ease-in-out;
+}
+
+.hero-bnb-logo {
+  width: 48px;
+  height: 48px;
+}
+
+.card-badges {
+  margin-bottom: 24px;
+}
+
+.token-input-wrapper {
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 24px;
+}
+
+.token-input {
+  width: 100%;
+  padding: 16px 20px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(243, 186, 47, 0.3);
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  transition: all 0.3s ease;
+}
+
+.token-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 10px rgba(243, 186, 47, 0.2);
+}
+
+.token-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.badge {
+  background: rgba(243, 186, 47, 0.1);
+  color: var(--gold);
+  border: 1px solid rgba(243, 186, 47, 0.3);
+  padding: 12px 24px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.verify-action-btn {
+  font-size: 18px;
+  padding: 16px 48px;
+  border-radius: 8px;
+  width: 100%;
+  max-width: 300px;
+  margin-bottom: 40px;
+}
+
+.card-disclaimer {
+  color: var(--text-secondary);
+  font-size: 14px;
+  max-width: 600px;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .hero-title {
+    font-size: 40px;
+  }
+  
+  .verify-card {
+    padding: 40px 20px;
+  }
+}
